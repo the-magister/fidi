@@ -39,7 +39,8 @@ void loop() {
   unsigned long cycleTime = 461UL;
   static Metro beatCounter(cycleTime);
   //beatCounter.interval(cycleTime);
-
+  boolean isBeat = beatCounter.check(); // important to keep checking AND CLEARING this.
+  
   // Read slider value from "A1/D11" position and map to fraction of the total cycle time
   unsigned long onTime = map(analogRead(SLIDER2), 0, 1023, 0, cycleTime);
 
