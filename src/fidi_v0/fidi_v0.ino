@@ -6,17 +6,17 @@
 
 // press the Armed button to unleash fire
 #define ARM_BUTTON BUTTON1
-#define ARM_INDICATOR LED2
+
+#define BEAT_INDICATOR LED1
 Bounce Armed = Bounce(ARM_BUTTON, 3UL);
 
 // this is the business end of the affair
-#define SOLENOID_PIN 2 // do not use D9 hereafter
-#define SOLENOID_INDICATOR LED2
-#define SOLENOID_OFF HIGH
+#define SOLENOID_PIN LED2 // do not use D9 hereafter
+#define SOLENOID_OFF LOW
 
 // hysteresis handling (i.e. "lag")
 #define MIN_HYST_TIME 0UL // microseconds
-#define MAX_HYST_TIME 100UL*1000UL // microseconds
+#define MAX_HYST_TIME 1000UL*1000UL // microseconds
 
 Solenoid Fire;
 
@@ -44,18 +44,27 @@ void loop() {
   // Read slider value from "A1/D11" position and map to fraction of the total cycle time
   unsigned long onTime = map(analogRead(SLIDER2), 0, 1023, 0, cycleTime);
 
+  static Metro turnOffBeatLED(10UL);
+  if( isBeat ) {
+      turnOffBeatLED.interval(onTime);
+      turnOffBeatLED.reset();
+      digitalWrite( BEAT_INDICATOR, HIGH );
+  }
+  if( turnOffBeatLED.check() ) {
+    digitalWrite( BEAT_INDICATOR, LOW );
+  }
+
   // Update the solenoid timing
   Fire.set( onTime, cycleTime );
 
   // update the arming system
   if ( Armed.update() ) {
     if ( Armed.read() == LOW ) {
-      digitalWrite( ARM_INDICATOR, HIGH );
 
       // show the timings
       Fire.show();
       unsigned long delayFor = cycleTime * 1000UL - laggedValue;
-      Serial << F("Lag settings.  lag=") << delayFor << F(" us.") << endl;
+      Serial << F("Lag settings.  lag=") << laggedValue << F(" us. delayFor=") << delayFor << F(" us.") << endl;
 
       // I think the simplest thing to do is wait here.
       // wait for the next beat
@@ -68,13 +77,10 @@ void loop() {
     }
     else {
       Fire.disarm();
-      digitalWrite( ARM_INDICATOR, LOW );
     }
   }
 
   // update the solenoid
   Fire.update();
-  // update the firing indicator, which will be out of phase from beat (shows hysteresis compensation)
-  digitalWrite( SOLENOID_INDICATOR, Fire.isFiring() );
 
 }
